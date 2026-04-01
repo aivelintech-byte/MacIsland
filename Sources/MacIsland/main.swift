@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         panel = IslandPanel()
         panel?.orderFrontRegardless()
+        AutoUpdater().checkForUpdates()
     }
 }
 
