@@ -19,7 +19,7 @@ final class IslandPanel: NSPanel {
         isMovable = false
 
         let host = NSHostingView(rootView: IslandView())
-        host.frame = NSRect(x: 0, y: 0, width: 400, height: 90)
+        host.frame = NSRect(x: 0, y: 0, width: 460, height: 90)
         contentView = host
 
         positionAtTopCenter()
@@ -28,10 +28,10 @@ final class IslandPanel: NSPanel {
     private func positionAtTopCenter() {
         guard let screen = NSScreen.main else { return }
         let screenFrame = screen.frame
-        let panelWidth: CGFloat = 400
+        let panelWidth: CGFloat = 460
         let panelHeight: CGFloat = 90
         let x = screenFrame.midX - panelWidth / 2
-        let y = screenFrame.maxY - panelHeight   // top of panel == top of screen
+        let y = screenFrame.maxY - panelHeight
         setFrame(NSRect(x: x, y: y, width: panelWidth, height: panelHeight), display: false)
     }
 }
