@@ -1,21 +1,31 @@
 import AppKit
 import SwiftUI
 
-// MARK: - Anthropic Logo Shape
+// MARK: - Anthropic Logo
+// Approximates the official Anthropic geometric mark
 
-private struct AnthropicLogo: Shape {
-    func path(in rect: CGRect) -> Path {
-        let w = rect.width, h = rect.height
-        var p = Path()
-        // Stylised "A" — two outer legs + inner cutout
-        p.move(to:    CGPoint(x: w * 0.50, y: 0))
-        p.addLine(to: CGPoint(x: w * 1.00, y: h))
-        p.addLine(to: CGPoint(x: w * 0.68, y: h))
-        p.addLine(to: CGPoint(x: w * 0.50, y: h * 0.40))
-        p.addLine(to: CGPoint(x: w * 0.32, y: h))
-        p.addLine(to: CGPoint(x: w * 0.00, y: h))
-        p.closeSubpath()
-        return p
+private struct AnthropicMark: View {
+    var size: CGFloat = 16
+    var color: Color = .white
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let w = sz.width, h = sz.height
+            // Outer shape — tall rounded rect
+            let outer = Path(roundedRect: CGRect(x: 0, y: 0, width: w, height: h), cornerRadius: w * 0.18)
+            ctx.fill(outer, with: .color(color))
+
+            // Inner cutout — inverted triangle cutout at bottom center
+            var cut = Path()
+            cut.move(to:    CGPoint(x: w * 0.30, y: h * 0.55))
+            cut.addLine(to: CGPoint(x: w * 0.70, y: h * 0.55))
+            cut.addLine(to: CGPoint(x: w * 0.50, y: h * 0.82))
+            cut.closeSubpath()
+            ctx.blendMode = .destinationOut
+            ctx.fill(cut, with: .color(.black))
+        }
+        .compositingGroup()
+        .frame(width: size, height: size * 1.2)
     }
 }
 
@@ -29,7 +39,6 @@ private enum ShortcutAction {
 private struct Shortcut {
     let label: String
     let symbol: String
-    let color: Color
     let action: ShortcutAction
 
     func execute() {
@@ -43,10 +52,10 @@ private struct Shortcut {
 }
 
 private let shortcuts: [Shortcut] = [
-    Shortcut(label: "Claude",   symbol: "sparkles",         color: Color(red: 0.80, green: 0.50, blue: 1.00), action: .url("https://claude.ai")),
-    Shortcut(label: "ChatGPT",  symbol: "bubble.left.fill", color: Color(red: 0.20, green: 0.78, blue: 0.58), action: .url("https://chatgpt.com")),
-    Shortcut(label: "Spotify",  symbol: "music.note",       color: Color(red: 0.11, green: 0.73, blue: 0.33), action: .url("spotify:")),
-    Shortcut(label: "Mac Mini", symbol: "terminal.fill",    color: Color(red: 0.25, green: 0.25, blue: 0.25), action: .ssh(host: "Macmini.fritz.box", user: "macmini")),
+    Shortcut(label: "Claude",   symbol: "sparkles",         action: .url("https://claude.ai")),
+    Shortcut(label: "ChatGPT",  symbol: "bubble.left.fill", action: .url("https://chatgpt.com")),
+    Shortcut(label: "Spotify",  symbol: "music.note",       action: .url("spotify:")),
+    Shortcut(label: "Mac Mini", symbol: "terminal.fill",    action: .ssh(host: "Macmini.fritz.box", user: "macmini")),
 ]
 
 // MARK: - IslandView
@@ -57,26 +66,34 @@ struct IslandView: View {
     @StateObject private var session = SessionTracker()
     @StateObject private var weekly  = WeeklyTracker()
 
-    private var pillWidth: CGFloat  { expanded ? 440 : 340 }
-    private var pillHeight: CGFloat { expanded ? 90  : 34  }
+    private var pillWidth: CGFloat  { expanded ? 400 : 300 }
+    private var pillHeight: CGFloat { expanded ? 76  : 28  }
 
     var body: some View {
         ZStack(alignment: .top) {
             ZStack {
                 UnevenRoundedRectangle(
                     topLeadingRadius: 0,
-                    bottomLeadingRadius: expanded ? 26 : 20,
-                    bottomTrailingRadius: expanded ? 26 : 20,
+                    bottomLeadingRadius: expanded ? 22 : 16,
+                    bottomTrailingRadius: expanded ? 22 : 16,
                     topTrailingRadius: 0
                 )
                 .fill(Color.black)
                 .frame(width: pillWidth, height: pillHeight)
-                .shadow(color: .black.opacity(0.6), radius: 14, y: 6)
+                .overlay(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 0,
+                        bottomLeadingRadius: expanded ? 22 : 16,
+                        bottomTrailingRadius: expanded ? 22 : 16,
+                        topTrailingRadius: 0
+                    )
+                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.7), radius: 12, y: 5)
 
                 if expanded { expandedContent } else { collapsedContent }
             }
-            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: expanded)
-            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: monitor.track?.title)
+            .animation(.spring(response: 0.35, dampingFraction: 0.75), value: expanded)
             .onHover { expanded = $0 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -85,67 +102,58 @@ struct IslandView: View {
         .onChange(of: session.elapsed) { weekly.update(elapsed: $0) }
     }
 
-    // MARK: - Collapsed: [session | %] · [logo] · [weekly]
+    // MARK: - Collapsed
 
     private var collapsedContent: some View {
         HStack(spacing: 0) {
-            // LEFT — session + token %
+
+            // LEFT — session time + bar
             HStack(spacing: 5) {
                 VStack(alignment: .trailing, spacing: 1) {
                     Text(session.formattedRemaining)
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(session.remaining < 3600 ? .orange : .white)
-                    Text("\(session.tokenPercent)% tokens")
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.white)
+                    Text("\(session.tokenPercent)%")
+                        .font(.system(size: 8, weight: .regular, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.4))
                 }
-                tokenBar
+                sessionBar
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
 
-            // CENTER — Anthropic logo
-            AnthropicLogo()
-                .fill(Color(red: 0.90, green: 0.55, blue: 0.30))
-                .frame(width: 18, height: 16)
-                .padding(.horizontal, 14)
+            // CENTER — Anthropic mark
+            AnthropicMark(size: 13, color: .white)
+                .padding(.horizontal, 12)
 
-            // RIGHT — weekly stats
+            // RIGHT — weekly
             HStack(spacing: 5) {
-                tokenBar.scaleEffect(x: -1)  // mirrored for visual balance
+                sessionBar
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("This week")
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.5))
+                    Text("week")
+                        .font(.system(size: 8, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.4))
                     Text(weekly.formatted)
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
                         .foregroundStyle(.white)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 12)
         .frame(width: pillWidth, height: pillHeight)
     }
 
-    private var tokenBar: some View {
+    private var sessionBar: some View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Color.white.opacity(0.12))
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(sessionBarColor)
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Color.white.opacity(0.1))
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Color.white.opacity(session.remaining < 3600 ? 0.5 : 0.85))
                     .frame(height: geo.size.height * (1 - session.progress))
             }
         }
-        .frame(width: 3, height: 20)
-    }
-
-    private var sessionBarColor: Color {
-        switch session.progress {
-        case 0..<0.5: return Color(red: 0.80, green: 0.50, blue: 1.00)
-        case 0.5..<0.8: return .orange
-        default: return .red
-        }
+        .frame(width: 2, height: 18)
     }
 
     // MARK: - Expanded
@@ -153,80 +161,87 @@ struct IslandView: View {
     private var expandedContent: some View {
         VStack(spacing: 0) {
             if let track = monitor.track { musicRow(track) } else { launcherRow }
-            Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 16)
-            claudeRow
+            Divider().background(Color.white.opacity(0.08)).padding(.horizontal, 14)
+            infoRow
         }
         .frame(width: pillWidth, height: pillHeight)
     }
 
     private var launcherRow: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 20) {
             ForEach(shortcuts, id: \.label) { s in
                 Button { s.execute() } label: {
                     VStack(spacing: 3) {
                         ZStack {
-                            Circle().fill(s.color).frame(width: 30, height: 30)
+                            Circle()
+                                .fill(Color.white.opacity(0.1))
+                                .frame(width: 28, height: 28)
                             Image(systemName: s.symbol)
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(.white)
                         }
                         Text(s.label)
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.6))
+                            .font(.system(size: 7, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.5))
                     }
                 }
                 .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 52)
+        .frame(height: 48)
     }
 
     private func musicRow(_ track: TrackInfo) -> some View {
-        HStack(spacing: 10) {
-            sourceIcon(track)
+        HStack(spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.white.opacity(0.1))
+                    .frame(width: 34, height: 34)
+                Image(systemName: track.source == .spotify ? "music.note" : "play.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
             VStack(alignment: .leading, spacing: 1) {
-                Text(track.title).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
-                Text(track.artist).font(.system(size: 10)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+                Text(track.title).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
+                Text(track.artist).font(.system(size: 9)).foregroundStyle(.white.opacity(0.5)).lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if track.source == .spotify { spotifyControls }
         }
-        .padding(.horizontal, 14)
-        .frame(height: 52)
+        .padding(.horizontal, 12)
+        .frame(height: 48)
     }
 
-    private var claudeRow: some View {
+    private var infoRow: some View {
         HStack {
-            AnthropicLogo()
-                .fill(Color(red: 0.90, green: 0.55, blue: 0.30))
-                .frame(width: 14, height: 12)
-            Text("Claude · \(session.tokenPercent)% left · \(session.formattedRemaining)")
-                .font(.system(size: 10, weight: .medium))
+            AnthropicMark(size: 10, color: .white.opacity(0.6))
+            Text("Claude")
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.white.opacity(0.5))
+            Text("·")
+                .foregroundStyle(.white.opacity(0.3))
+            Text(session.formattedRemaining)
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
                 .foregroundStyle(.white.opacity(0.7))
+            Text("·")
+                .foregroundStyle(.white.opacity(0.3))
+            Text("\(session.tokenPercent)% tokens")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.5))
             Spacer()
             Text(weekly.formatted)
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.5))
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.4))
         }
-        .padding(.horizontal, 14)
-        .frame(height: 34)
+        .padding(.horizontal, 12)
+        .frame(height: 24)
     }
 
-    // MARK: - Music helpers
-
-    private func sourceIcon(_ track: TrackInfo) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(track.source == .spotify ? Color(red: 0.11, green: 0.73, blue: 0.33) : .red)
-                .frame(width: 40, height: 40)
-            Image(systemName: track.source == .spotify ? "music.note" : "play.fill")
-                .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
-        }
-    }
+    // MARK: - Music controls
 
     private var spotifyControls: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 1) {
             controlButton(icon: "backward.fill")  { monitor.previousTrack() }
             controlButton(icon: "playpause.fill") { monitor.togglePlayPause() }
             controlButton(icon: "forward.fill")   { monitor.nextTrack() }
@@ -236,9 +251,9 @@ struct IslandView: View {
     private func controlButton(icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.85))
-                .frame(width: 26, height: 26)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
