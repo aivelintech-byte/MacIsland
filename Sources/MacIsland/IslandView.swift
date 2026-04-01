@@ -1,18 +1,38 @@
 import AppKit
 import SwiftUI
 
+private enum ShortcutAction {
+    case url(String)
+    case ssh(host: String, user: String)
+}
+
 private struct Shortcut {
     let label: String
     let symbol: String
     let color: Color
-    let url: String
+    let action: ShortcutAction
+
+    func execute() {
+        switch action {
+        case .url(let urlString):
+            NSWorkspace.shared.open(URL(string: urlString)!)
+        case .ssh(let host, let user):
+            let script = """
+            tell application "Terminal"
+                activate
+                do script "ssh \(user)@\(host)"
+            end tell
+            """
+            NSAppleScript(source: script)?.executeAndReturnError(nil)
+        }
+    }
 }
 
 private let shortcuts: [Shortcut] = [
-    Shortcut(label: "Claude",   symbol: "sparkles",          color: Color(red: 0.80, green: 0.50, blue: 1.00), url: "https://claude.ai"),
-    Shortcut(label: "ChatGPT",  symbol: "bubble.left.fill",  color: Color(red: 0.20, green: 0.78, blue: 0.58), url: "https://chatgpt.com"),
-    Shortcut(label: "Gemini",   symbol: "star.fill",         color: Color(red: 0.26, green: 0.52, blue: 0.96), url: "https://gemini.google.com"),
-    Shortcut(label: "Perplexity", symbol: "magnifyingglass", color: Color(red: 0.13, green: 0.13, blue: 0.13), url: "https://perplexity.ai"),
+    Shortcut(label: "Claude",    symbol: "sparkles",           color: Color(red: 0.80, green: 0.50, blue: 1.00), action: .url("https://claude.ai")),
+    Shortcut(label: "ChatGPT",   symbol: "bubble.left.fill",   color: Color(red: 0.20, green: 0.78, blue: 0.58), action: .url("https://chatgpt.com")),
+    Shortcut(label: "Gemini",    symbol: "star.fill",          color: Color(red: 0.26, green: 0.52, blue: 0.96), action: .url("https://gemini.google.com")),
+    Shortcut(label: "Mac Mini",  symbol: "terminal.fill",      color: Color(red: 0.20, green: 0.20, blue: 0.20), action: .ssh(host: "Macmini.fritz.box", user: "macmini")),
 ]
 
 struct IslandView: View {
@@ -20,8 +40,8 @@ struct IslandView: View {
     @StateObject private var monitor = NowPlayingMonitor()
 
     private var pillWidth: CGFloat {
-        guard monitor.track != nil else { return expanded ? 360 : 120 }
-        return expanded ? 360 : 180
+        guard monitor.track != nil else { return expanded ? 380 : 120 }
+        return expanded ? 380 : 180
     }
 
     private var pillHeight: CGFloat { expanded ? 80 : 34 }
@@ -81,27 +101,29 @@ struct IslandView: View {
 
     @ViewBuilder
     private func musicExpanded(_ track: TrackInfo) -> some View {
-        HStack(spacing: 12) {
-            sourceIcon(track)
+        VStack(spacing: 6) {
+            HStack(spacing: 12) {
+                sourceIcon(track)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(track.title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                Text(track.artist)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(track.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(track.artist)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            if track.source == .spotify {
-                spotifyControls
+                if track.source == .spotify {
+                    spotifyControls
+                }
             }
         }
         .padding(.horizontal, 14)
-        .frame(width: 360)
+        .frame(width: pillWidth)
     }
 
     @ViewBuilder
@@ -109,7 +131,7 @@ struct IslandView: View {
         HStack(spacing: 10) {
             ForEach(shortcuts, id: \.label) { shortcut in
                 Button {
-                    NSWorkspace.shared.open(URL(string: shortcut.url)!)
+                    shortcut.execute()
                 } label: {
                     VStack(spacing: 4) {
                         ZStack {
@@ -128,7 +150,8 @@ struct IslandView: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(width: 360)
+        .padding(.horizontal, 14)
+        .frame(width: pillWidth)
     }
 
     // MARK: - Shared
