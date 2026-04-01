@@ -41,7 +41,7 @@ struct IslandView: View {
     @StateObject private var session = SessionTracker()
 
     private var pillWidth: CGFloat {
-        expanded ? 440 : (monitor.track != nil ? 260 : 220)
+        expanded ? 440 : 300
     }
 
     private var pillHeight: CGFloat { expanded ? 90 : 34 }
@@ -92,25 +92,38 @@ struct IslandView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Color(red: 0.80, green: 0.50, blue: 1.00))
 
+            // Music info if playing
             if let track = monitor.track {
-                // Music playing
                 Image(systemName: track.source == .spotify ? "music.note" : "play.rectangle.fill")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.white.opacity(0.7))
                 Text(track.title)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.8))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .frame(maxWidth: 100)
+                    .frame(maxWidth: 70)
             }
 
             Spacer(minLength: 4)
 
-            // Session timer
-            Text(session.formattedRemaining)
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(session.remaining < 3600 ? Color.orange : Color.white.opacity(0.6))
+            // Session timer + bar always visible
+            HStack(spacing: 6) {
+                Text(session.formattedRemaining)
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(session.remaining < 3600 ? Color.orange : Color.white.opacity(0.85))
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.white.opacity(0.15))
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(sessionBarColor)
+                            .frame(width: geo.size.width * (1 - session.progress))
+                    }
+                }
+                .frame(width: 50, height: 4)
+            }
         }
         .padding(.horizontal, 12)
         .frame(width: pillWidth)
