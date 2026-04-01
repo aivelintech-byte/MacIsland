@@ -29,10 +29,10 @@ private struct Shortcut {
 }
 
 private let shortcuts: [Shortcut] = [
-    Shortcut(label: "Claude",    symbol: "sparkles",           color: Color(red: 0.80, green: 0.50, blue: 1.00), action: .url("https://claude.ai")),
-    Shortcut(label: "ChatGPT",   symbol: "bubble.left.fill",   color: Color(red: 0.20, green: 0.78, blue: 0.58), action: .url("https://chatgpt.com")),
-    Shortcut(label: "Gemini",    symbol: "star.fill",          color: Color(red: 0.26, green: 0.52, blue: 0.96), action: .url("https://gemini.google.com")),
-    Shortcut(label: "Mac Mini",  symbol: "terminal.fill",      color: Color(red: 0.20, green: 0.20, blue: 0.20), action: .ssh(host: "Macmini.fritz.box", user: "macmini")),
+    Shortcut(label: "Claude",   symbol: "sparkles",          color: Color(red: 0.80, green: 0.50, blue: 1.00), action: .url("https://claude.ai")),
+    Shortcut(label: "ChatGPT",  symbol: "bubble.left.fill",  color: Color(red: 0.20, green: 0.78, blue: 0.58), action: .url("https://chatgpt.com")),
+    Shortcut(label: "Spotify",  symbol: "music.note",        color: Color(red: 0.11, green: 0.73, blue: 0.33), action: .url("spotify:")),
+    Shortcut(label: "Mac Mini", symbol: "terminal.fill",     color: Color(red: 0.20, green: 0.20, blue: 0.20), action: .ssh(host: "Macmini.fritz.box", user: "macmini")),
 ]
 
 struct IslandView: View {
