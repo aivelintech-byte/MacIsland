@@ -1,4 +1,19 @@
+import AppKit
 import SwiftUI
+
+private struct Shortcut {
+    let label: String
+    let symbol: String
+    let color: Color
+    let url: String
+}
+
+private let shortcuts: [Shortcut] = [
+    Shortcut(label: "Claude",   symbol: "sparkles",          color: Color(red: 0.80, green: 0.50, blue: 1.00), url: "https://claude.ai"),
+    Shortcut(label: "ChatGPT",  symbol: "bubble.left.fill",  color: Color(red: 0.20, green: 0.78, blue: 0.58), url: "https://chatgpt.com"),
+    Shortcut(label: "Gemini",   symbol: "star.fill",         color: Color(red: 0.26, green: 0.52, blue: 0.96), url: "https://gemini.google.com"),
+    Shortcut(label: "Perplexity", symbol: "magnifyingglass", color: Color(red: 0.13, green: 0.13, blue: 0.13), url: "https://perplexity.ai"),
+]
 
 struct IslandView: View {
     @State private var expanded = false
@@ -9,9 +24,7 @@ struct IslandView: View {
         return expanded ? 360 : 180
     }
 
-    private var pillHeight: CGFloat {
-        expanded ? 80 : 34
-    }
+    private var pillHeight: CGFloat { expanded ? 80 : 34 }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -60,34 +73,65 @@ struct IslandView: View {
     @ViewBuilder
     private var expandedContent: some View {
         if let track = monitor.track {
-            HStack(spacing: 12) {
-                sourceIcon(track)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(track.title)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    Text(track.artist)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                if track.source == .spotify {
-                    spotifyControls
-                }
-            }
-            .padding(.horizontal, 14)
-            .frame(width: 360)
+            musicExpanded(track)
         } else {
-            // idle expanded state
-            Text("Nothing playing")
-                .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(0.4))
+            launcherExpanded
         }
     }
+
+    @ViewBuilder
+    private func musicExpanded(_ track: TrackInfo) -> some View {
+        HStack(spacing: 12) {
+            sourceIcon(track)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(track.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                Text(track.artist)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if track.source == .spotify {
+                spotifyControls
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(width: 360)
+    }
+
+    @ViewBuilder
+    private var launcherExpanded: some View {
+        HStack(spacing: 10) {
+            ForEach(shortcuts, id: \.label) { shortcut in
+                Button {
+                    NSWorkspace.shared.open(URL(string: shortcut.url)!)
+                } label: {
+                    VStack(spacing: 4) {
+                        ZStack {
+                            Circle()
+                                .fill(shortcut.color)
+                                .frame(width: 36, height: 36)
+                            Image(systemName: shortcut.symbol)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                        Text(shortcut.label)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(width: 360)
+    }
+
+    // MARK: - Shared
 
     @ViewBuilder
     private func sourceIcon(_ track: TrackInfo) -> some View {
@@ -106,9 +150,9 @@ struct IslandView: View {
     @ViewBuilder
     private var spotifyControls: some View {
         HStack(spacing: 4) {
-            controlButton(icon: "backward.fill") { monitor.previousTrack() }
+            controlButton(icon: "backward.fill")  { monitor.previousTrack() }
             controlButton(icon: "playpause.fill") { monitor.togglePlayPause() }
-            controlButton(icon: "forward.fill") { monitor.nextTrack() }
+            controlButton(icon: "forward.fill")   { monitor.nextTrack() }
         }
     }
 
