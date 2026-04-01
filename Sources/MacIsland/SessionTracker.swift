@@ -16,6 +16,8 @@ final class SessionTracker: ObservableObject {
         return String(format: "%d:%02d left", m, s)
     }
 
+    var tokenPercent: Int { max(0, Int((1 - progress) * 100)) }
+
     var formattedElapsed: String {
         let h = Int(elapsed) / 3600
         let m = Int(elapsed) % 3600 / 60
