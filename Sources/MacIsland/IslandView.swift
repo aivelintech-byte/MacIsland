@@ -65,6 +65,11 @@ struct IslandView: View {
     @StateObject private var monitor = NowPlayingMonitor()
     @StateObject private var session = SessionTracker()
     @StateObject private var weekly  = WeeklyTracker()
+    @StateObject private var claude  = ClaudeUsageMonitor()
+
+    private var tokenPercent: Int {
+        claude.available ? claude.usage.percentRemaining : session.tokenPercent
+    }
 
     private var pillWidth: CGFloat  { expanded ? 400 : 300 }
     private var pillHeight: CGFloat { expanded ? 76  : 28  }
@@ -97,8 +102,8 @@ struct IslandView: View {
             .onHover { expanded = $0 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .onAppear  { monitor.start(); session.start() }
-        .onDisappear { monitor.stop(); session.stop() }
+        .onAppear  { monitor.start(); session.start(); claude.start() }
+        .onDisappear { monitor.stop(); session.stop(); claude.stop() }
         .onChange(of: session.elapsed) { weekly.update(elapsed: $0) }
     }
 
@@ -113,7 +118,7 @@ struct IslandView: View {
                     Text(session.formattedRemaining)
                         .font(.system(size: 9, weight: .semibold, design: .monospaced))
                         .foregroundStyle(.white)
-                    Text("\(session.tokenPercent)%")
+                    Text("\(tokenPercent)%")
                         .font(.system(size: 8, weight: .regular, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.4))
                 }
@@ -126,16 +131,13 @@ struct IslandView: View {
                 .padding(.horizontal, 12)
 
             // RIGHT — weekly
-            HStack(spacing: 5) {
-                sessionBar
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("week")
-                        .font(.system(size: 8, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.4))
-                    Text(weekly.formatted)
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white)
-                }
+            VStack(alignment: .leading, spacing: 1) {
+                Text("week")
+                    .font(.system(size: 8, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.4))
+                Text(weekly.formatted)
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.white)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -226,7 +228,7 @@ struct IslandView: View {
                 .foregroundStyle(.white.opacity(0.7))
             Text("·")
                 .foregroundStyle(.white.opacity(0.3))
-            Text("\(session.tokenPercent)% tokens")
+            Text("\(tokenPercent)% tokens")
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(.white.opacity(0.5))
             Spacer()
