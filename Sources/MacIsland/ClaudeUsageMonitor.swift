@@ -7,13 +7,13 @@ struct ClaudeUsage {
     static let contextLimit = 200_000
 
     var total: Int { inputTokens + outputTokens }
-    var percentUsed: Int { min(100, total * 100 / Self.contextLimit) }
+    var percentUsed: Int { min(100, inputTokens * 100 / Self.contextLimit) }
     var percentRemaining: Int { max(0, 100 - percentUsed) }
 
     var formatted: String {
-        let t = total
-        if t >= 1000 { return String(format: "%.1fk tok", Double(t) / 1000) }
-        return "\(t) tok"
+        let t = inputTokens
+        if t >= 1000 { return String(format: "%.1fk ctx", Double(t) / 1000) }
+        return "\(t) ctx"
     }
 }
 
@@ -71,7 +71,8 @@ final class ClaudeUsageMonitor: ObservableObject {
 
     private func parseTokens(from file: URL) -> (Int, Int) {
         guard let content = try? String(contentsOf: file) else { return (0, 0) }
-        var inp = 0, out = 0
+        var lastInp = 0
+        var totalOut = 0
         for line in content.components(separatedBy: "\n") {
             guard !line.isEmpty,
                   let data = line.data(using: .utf8),
@@ -79,9 +80,10 @@ final class ClaudeUsageMonitor: ObservableObject {
                   let message = json["message"] as? [String: Any],
                   let u = message["usage"] as? [String: Any]
             else { continue }
-            inp += (u["input_tokens"] as? Int ?? 0) + (u["cache_creation_input_tokens"] as? Int ?? 0)
-            out += (u["output_tokens"] as? Int ?? 0)
+            let inp = (u["input_tokens"] as? Int ?? 0) + (u["cache_creation_input_tokens"] as? Int ?? 0)
+            if inp > 0 { lastInp = inp }
+            totalOut += (u["output_tokens"] as? Int ?? 0)
         }
-        return (inp, out)
+        return (lastInp, totalOut)
     }
 }
