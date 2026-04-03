@@ -71,32 +71,40 @@ struct IslandView: View {
         claude.available ? claude.usage.percentRemaining : session.tokenPercent
     }
 
-    private var pillWidth: CGFloat  { expanded ? 400 : 300 }
-    private var pillHeight: CGFloat { expanded ? 76  : 28  }
+    private var pillWidth: CGFloat  { expanded ? 400 : 12 }
+    private var pillHeight: CGFloat { expanded ? 76  : 12 }
 
     var body: some View {
         ZStack(alignment: .top) {
             ZStack {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 0,
-                    bottomLeadingRadius: expanded ? 22 : 16,
-                    bottomTrailingRadius: expanded ? 22 : 16,
-                    topTrailingRadius: 0
-                )
-                .fill(Color.black)
+                Group {
+                    if expanded {
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 0,
+                            bottomLeadingRadius: 22,
+                            bottomTrailingRadius: 22,
+                            topTrailingRadius: 0
+                        )
+                        .fill(Color.black)
+                        .overlay(
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 0,
+                                bottomLeadingRadius: 22,
+                                bottomTrailingRadius: 22,
+                                topTrailingRadius: 0
+                            )
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                        )
+                    } else {
+                        Circle()
+                            .fill(Color.black)
+                            .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 0.5))
+                    }
+                }
                 .frame(width: pillWidth, height: pillHeight)
-                .overlay(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 0,
-                        bottomLeadingRadius: expanded ? 22 : 16,
-                        bottomTrailingRadius: expanded ? 22 : 16,
-                        topTrailingRadius: 0
-                    )
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-                )
-                .shadow(color: .black.opacity(0.7), radius: 12, y: 5)
+                .shadow(color: .black.opacity(0.7), radius: expanded ? 12 : 4, y: expanded ? 5 : 2)
 
-                if expanded { expandedContent } else { collapsedContent }
+                if expanded { expandedContent }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.75), value: expanded)
             .onHover { expanded = $0 }
